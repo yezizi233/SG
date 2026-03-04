@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Singapore Biotech Ecosystem Map (Mobile Optimized | A/B/C/D)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --cA: #E41A1C;
+      --cB: #377EB8;
+      --cC: #4DAF4A;
+      --cD: #FF7F00;
+      --panel-bg: rgba(255,255,255,0.98);
+      --shadow: 0 8px 20px rgba(0,0,0,0.18);
+      --radius: 12px;
+    }
+    html, body { height: 100%; }
+    body {
+      margin:0; padding:0; overflow:hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #fff;
+    }
+    #map {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh; /* mobile-friendly viewport height */
+    }
+
+    /* Menu button */
+    .menu-btn {
+      position: absolute;
+      z-index: 2000;
+      top: calc(10px + env(safe-area-inset-top));
+      left: calc(10px + env(safe-area-inset-left));
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 12px;
+      background: var(--panel-bg);
+      box-shadow: var(--shadow);
+      font-size: 20px;
+      line-height: 44px;
+      text-align: center;
+      color: #111;
+      cursor: pointer;
+    }
+    .menu-btn:active { transform: scale(0.98); }
+
+    /* Panel */
+    .backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.25);
+      z-index: 2100;
+      display: none;
+    }
+    .panel {
+      position: absolute;
+      z-index: 2200;
+      top: calc(10px + env(safe-area-inset-top));
+      left: calc(10px + env(safe-area-inset-left));
+      right: calc(10px + env(safe-area-inset-right));
+      max-width: 520px;
+      background: var(--panel-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 12px 12px 10px 12px;
+      display: none;
+      max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .panel-header {
+      display:flex;
+      align-items:flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .panel-title {
+      font-weight: 800;
+      font-size: 15px;
+      color: #111;
+    }
+    .panel-subtitle {
+      margin-top: 2px;
+      font-size: 12px;
+      color: #444;
+      line-height: 1.35;
+    }
+    .panel-close {
+      border: none;
+      background: transparent;
+      font-size: 26px;
+      line-height: 26px;
+      cursor: pointer;
+      color: #111;
+      padding: 2px 6px;
+    }
+    .panel-section {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+    }
+    .section-title {
+      font-weight: 750;
+      font-size: 13px;
+      color:#111;
+      margin-bottom: 6px;
+    }
+    .chk, .radio {
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      font-size: 13px;
+      line-height: 1.35;
+      margin: 6px 0;
+      user-select:none;
+    }
+    .chk input, .radio input {
+      transform: scale(1.05);
+    }
+    .dot {
+      width: 12px; height: 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.12);
+      flex: 0 0 12px;
+    }
+    .help {
+      font-size: 12px;
+      color:#444;
+      line-height: 1.45;
+    }
+    .actions {
+      margin-top: 10px;
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      border: 1px solid rgba(0,0,0,0.15);
+      background: rgba(255,255,255,0.95);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn:active { transform: scale(0.99); }
+
+    /* Leaflet: move zoom to bottom-right for mobile */
+    .leaflet-bottom.leaflet-right {
+      margin-right: env(safe-area-inset-right);
+      margin-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Permanent label styling */
+    .leaflet-tooltip.marker-label {
+      background: rgba(255,255,255,0.94);
+      border: 1px solid rgba(0,0,0,0.22);
+      border-radius: 8px;
+      color: #111;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 7px;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.12);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .leaflet-tooltip.marker-label:before {
+      display: none !important; /* no arrow */
+    }
+
+    /* Mobile label: slightly smaller + allow wrapping */
+    @media (max-width: 640px) {
+      .leaflet-tooltip.marker-label {
+        font-size: 11px;
+        padding: 2px 6px;
+        max-width: 180px;
+        white-space: normal;
+        line-height: 1.15;
+      }
+      .menu-btn {
+        width: 42px;
+        height: 42px;
+        line-height: 42px;
+        border-radius: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <button class="menu-btn" id="menuBtn" aria-label="打开菜单">☰</button>
+  <div class="backdrop" id="backdrop"></div>
+  <div class="panel" id="panel" role="dialog" aria-label="地图设置">
+    <div class="panel-header">
+      <div>
+        <div class="panel-title">地图设置</div>
+        <div class="panel-subtitle">新加坡生物医药生态系统（A/B/C + D现有客户）</div>
+      </div>
+      <button class="panel-close" id="closePanel" aria-label="关闭">×</button>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">筛选（图例）</div>
+      <label class="chk"><input type="checkbox" id="layerA" checked> <span class="dot" style="background:#E41A1C"></span> A. 核心研发园区</label>
+          <label class="chk"><input type="checkbox" id="layerB" checked> <span class="dot" style="background:#377EB8"></span> B. 孵化器/加速器</label>
+          <label class="chk"><input type="checkbox" id="layerC" checked> <span class="dot" style="background:#4DAF4A"></span> C. 投资机构</label>
+          <label class="chk"><input type="checkbox" id="layerD" checked> <span class="dot" style="background:#FF7F00"></span> D. 现有客户</label>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">标签显示</div>
+      <label class="radio"><input type="radio" name="labelMode" value="smart" > 智能（推荐：自动降噪+随缩放显示）</label>
+          <label class="radio"><input type="radio" name="labelMode" value="all" checked> 显示全部标签（可能拥挤）</label>
+          <label class="radio"><input type="radio" name="labelMode" value="key" > 只显示关键点（A+D）</label>
+          <label class="radio"><input type="radio" name="labelMode" value="customers" > 只显示客户（D）</label>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">说明</div>
+      <div class="help">• 点击圆点查看详情（分类、地址/位置、补充信息、Google Maps 跳转）。<br/>• 标签默认“智能”模式：缩放越大显示越多，并自动避让；空间不足会隐藏低优先级标签。<br/>• 如需一次性看全名，可切到“显示全部标签”。</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="resetView">重置视图</button>
+      <button class="btn" id="showPanelHint">展开/收起</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', {
+      worldCopyJump: true,
+      zoomControl: false
+    }).setView([1.295, 103.82], 12);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://carto.com/">CartoDB</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    const COLOR = {
+      'A': '#E41A1C',
+      'B': '#377EB8',
+      'C': '#4DAF4A',
+      'D': '#FF7F00'
+    };
+
+    const layers = {
+      'A': L.layerGroup().addTo(map),
+      'B': L.layerGroup().addTo(map),
+      'C': L.layerGroup().addTo(map),
+      'D': L.layerGroup().addTo(map)
+    };
+
+    const data = [{"section": "A. 核心研发园区", "category": "研发园区", "name": "Biopolis（启奥城）", "location": "one-north, Buona Vista", "coords": [1.3023, 103.7915], "color": "A", "country": "Singapore", "group": "A", "address": "one-north, Buona Vista"}, {"section": "A. 核心研发园区", "category": "研发园区", "name": "Geneo @ Singapore Science Park", "location": "Science Park Drive, Kent Ridge", "coords": [1.2917, 103.7828], "color": "A", "country": "Singapore", "group": "A", "address": "Science Park Drive, Kent Ridge"}, {"section": "A. 核心研发园区", "category": "研发园区", "name": "Tuas Biomedical Park", "location": "Tuas, 西部", "coords": [1.2952, 103.6262], "color": "A", "country": "Singapore", "group": "A", "address": "Tuas, 西部"}, {"section": "A. 核心研发园区", "category": "研发园区", "name": "Kallang Life Sciences Sub-cluster", "location": "Kallang, 城市边缘", "coords": [1.3113, 103.8649], "color": "A", "country": "Singapore", "group": "A", "address": "Kallang, 城市边缘"}, {"section": "A. 核心研发园区", "category": "研发园区", "name": "LaunchPad @ one-north", "location": "one-north", "coords": [1.2965, 103.7884], "color": "A", "country": "Singapore", "group": "A", "address": "one-north"}, {"section": "B. 生物医药孵化器/加速器", "category": "孵化器", "name": "NSG BioLabs", "location": "Biopolis内，3个站点", "coords": [1.3033, 103.791], "color": "B", "country": "Singapore", "group": "B", "address": "Biopolis内，3个站点"}, {"section": "B. 生物医药孵化器/加速器", "category": "孵化器", "name": "JLABS Singapore (J&J Innovation)", "location": "Biopolis/one-north", "coords": [1.303, 103.7925], "color": "B", "country": "Singapore", "group": "B", "address": "Biopolis/one-north"}, {"section": "B. 生物医药孵化器/加速器", "category": "孵化器", "name": "CO11AB (NHG BioMedTech Incubator)", "location": "Health City Novena", "coords": [1.3216, 103.8458], "color": "B", "country": "Singapore", "group": "B", "address": "Health City Novena"}, {"section": "B. 生物医药孵化器/加速器", "category": "孵化器", "name": "SGInnovate", "location": "Carpenter Street, Clarke Quay", "coords": [1.2873, 103.8471], "color": "B", "country": "Singapore", "group": "B", "address": "Carpenter Street, Clarke Quay"}, {"section": "B. 生物医药孵化器/加速器", "category": "加速器", "name": "Antler Singapore", "location": "128 Prinsep Street, Bugis", "coords": [1.3005, 103.852], "color": "B", "country": "Singapore", "group": "B", "address": "128 Prinsep Street, Bugis"}, {"section": "C. 生命科学核心投资机构", "category": "投资机构", "name": "ClavystBio (Temasek)", "location": "Node 1, Singapore Science Park", "coords": [1.292, 103.783], "color": "C", "country": "Singapore", "group": "C", "address": "Node 1, Singapore Science Park"}, {"section": "C. 生命科学核心投资机构", "category": "投资机构", "name": "SG Growth Capital (EDBI+Seeds合并)", "location": "Singapore", "coords": [1.2941, 103.8528], "color": "C", "country": "Singapore", "group": "C", "address": "Singapore"}, {"section": "C. 生命科学核心投资机构", "category": "投资机构", "name": "Nest.Bio Ventures / NSG Ventures", "location": "Singapore/Boston", "coords": [1.3028, 103.7905], "color": "C", "country": "Singapore", "group": "C", "address": "Singapore/Boston"}, {"section": "C. 生命科学核心投资机构", "category": "投资机构", "name": "Xora Innovation (Temasek)", "location": "Symbiosis Tower, One North", "coords": [1.299, 103.789], "color": "C", "country": "Singapore", "group": "C", "address": "Symbiosis Tower, One North"}, {"section": "D. 现有客户", "category": "现有客户（SO）", "name": "Hummingbird Bioscience", "location": "The Galen, 61 Science Park Road #06-15, Singapore 117525", "coords": [1.2866, 103.7841], "color": "D", "country": "Singapore", "group": "D", "address": "The Galen, 61 Science Park Road #06-15, Singapore 117525"}, {"section": "D. 现有客户", "category": "现有客户（SO）", "name": "VVB Bio Pte Ltd", "location": "11 Collyer Quay #17-00, The Arcade, Singapore 049317", "coords": [1.2836196, 103.8520689], "color": "D", "country": "Singapore", "group": "D", "address": "11 Collyer Quay #17-00, The Arcade, Singapore 049317"}, {"section": "D. 现有客户", "category": "现有客户（SO）", "name": "Biosensors Interventional Technologies", "location": "36 Jalan Tukang, Singapore 619266", "coords": [1.3262, 103.7098], "color": "D", "country": "Singapore", "group": "D", "address": "36 Jalan Tukang, Singapore 619266"}];
+
+    // Helpers: meters <-> degrees
+    function metersToLat(m) { return m / 111111; }
+    function metersToLng(m, lat) { return m / (111111 * Math.cos(lat * Math.PI / 180)); }
+
+    // Optional: jitter duplicate coordinates (same lat/lng) to make markers/labels readable
+    function jitterDuplicateCoords(items) {
+      const groups = {};
+      items.forEach((it) => {
+        if (!it.coords || it.coords.length !== 2) return;
+        const key = it.coords[0].toFixed(6) + ',' + it.coords[1].toFixed(6);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(it);
+      });
+
+      const baseMeters = 18; // small, map-acceptable
+      for (const key in groups) {
+        const g = groups[key];
+        if (!g || g.length <= 1) continue;
+        const lat0 = g[0].coords[0];
+        const lng0 = g[0].coords[1];
+        const n = g.length;
+
+        for (let i=0; i<n; i++) {
+          const angle = (2 * Math.PI * i) / n;
+          const ring = Math.floor(i / 6);
+          const r = baseMeters * (1 + ring * 0.7);
+          const dLat = metersToLat(r * Math.sin(angle));
+          const dLng = metersToLng(r * Math.cos(angle), lat0);
+          g[i]._origCoords = [lat0, lng0];
+          g[i].coords = [lat0 + dLat, lng0 + dLng];
+        }
+      }
+    }
+
+    
+
+    function computeShortName(name) {
+      if (!name) return '';
+      let t = String(name).trim();
+      // remove trailing parenthesis content to reduce clutter
+      t = t.replace(/\s*\([^\)]*\)\s*$/g, '').trim();
+      // hard truncate long labels
+      const maxLen = (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) ? 26 : 34;
+      if (t.length > maxLen) t = t.slice(0, maxLen-1) + '…';
+      return t;
+    }
+
+    function buildPopup(item) {
+      const addr = item.address || item.location || '';
+      let html = `<b>${item.name || ''}</b><br/>` +
+                 `<b>国家/地区:</b> ${item.country || ''}<br/>` +
+                 `<b>分类:</b> ${item.section || ''}（${item.category || ''}）<br/>` +
+                 `<b>地址/位置:</b> ${addr}<br/>`;
+
+      if (item.extra) {
+        for (const k in item.extra) {
+          if (!Object.prototype.hasOwnProperty.call(item.extra, k)) continue;
+          html += `<b>${k}:</b> ${item.extra[k]}<br/>`;
+        }
+      }
+
+      if (addr) {
+        const gmap = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addr);
+        html += `<a href="${gmap}" target="_blank" rel="noopener">打开 Google Maps</a>`;
+      }
+      return html;
+    }
+
+    // Marker store
+    const allMarkers = [];
+    const allLatLngs = [];
+
+    function groupFromItem(item) {
+      const grp = (item.group || (item.section || '').trim().slice(0,1) || '').toUpperCase();
+      return ['A','B','C','D'].includes(grp) ? grp : 'A';
+    }
+
+    data.forEach((item) => {
+      const grp = groupFromItem(item);
+      item.group = grp;
+
+      const markerColor = COLOR[grp] || '#666';
+      const targetLayer = layers[grp];
+
+      const isD = grp === 'D';
+      const marker = L.circleMarker(item.coords, {
+        radius: isD ? 9 : 8,
+        fillColor: markerColor,
+        color: isD ? '#111' : '#fff',
+        weight: isD ? 2 : 1,
+        opacity: 1,
+        fillOpacity: 0.88
+      }).addTo(targetLayer);
+
+      marker.bindPopup(buildPopup(item));
+
+      const labelFull = String(item.name || '');
+      const labelShort = computeShortName(labelFull);
+
+      marker.bindTooltip(labelFull, {
+        permanent: true,
+        direction: 'right',
+        opacity: 0.95,
+        className: 'marker-label',
+        offset: [12, 0]
+      });
+
+      allMarkers.push({
+        marker,
+        item,
+        group: grp,
+        labelFull,
+        labelShort,
+        hiddenByLayout: false
+      });
+
+      allLatLngs.push(item.coords);
+    });
+
+    // Fit bounds initial
+    let fullBounds = null;
+    if (allLatLngs.length > 0) {
+      fullBounds = L.latLngBounds(allLatLngs);
+      map.fitBounds(fullBounds.pad(0.15));
+    }
+
+    // Panel UI
+    const panel = document.getElementById('panel');
+    const backdrop = document.getElementById('backdrop');
+    const menuBtn = document.getElementById('menuBtn');
+
+    function openPanel() {
+      panel.style.display = 'block';
+      backdrop.style.display = 'block';
+    }
+    function closePanel() {
+      panel.style.display = 'none';
+      backdrop.style.display = 'none';
+    }
+    function togglePanel() {
+      if (panel.style.display === 'block') closePanel(); else openPanel();
+    }
+    menuBtn.addEventListener('click', togglePanel);
+    document.getElementById('closePanel').addEventListener('click', closePanel);
+    backdrop.addEventListener('click', closePanel);
+    document.getElementById('showPanelHint').addEventListener('click', togglePanel);
+
+    // Layer toggles
+    function setLayer(grp, visible) {
+      if (visible) map.addLayer(layers[grp]);
+      else map.removeLayer(layers[grp]);
+      scheduleLayout();
+    }
+    ['A','B','C','D'].forEach((g) => {
+      const el = document.getElementById('layer' + g);
+      el.addEventListener('change', () => setLayer(g, el.checked));
+    });
+
+    // Reset view
+    document.getElementById('resetView').addEventListener('click', () => {
+      if (fullBounds) map.fitBounds(fullBounds.pad(0.15));
+      closePanel();
+    });
+
+    // Label mode
+    let labelMode = 'all';
+    document.querySelectorAll('input[name="labelMode"]').forEach((el) => {
+      el.addEventListener('change', () => {
+        if (el.checked) {
+          labelMode = el.value;
+          scheduleLayout();
+        }
+      });
+    });
+
+    // Smart rules
+    const SMART_RULES_DESKTOP = [{"minZoom": 0, "groups": ["D"]}, {"minZoom": 11, "groups": ["A", "D"]}, {"minZoom": 12, "groups": ["A", "B", "C", "D"]}];
+    const SMART_RULES_MOBILE = [{"minZoom": 0, "groups": ["D"]}, {"minZoom": 12, "groups": ["A", "D"]}, {"minZoom": 13, "groups": ["A", "B", "C", "D"]}];
+
+    function isMobile() {
+      return window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
+    }
+
+    function smartGroups(zoom) {
+      const rules = isMobile() ? SMART_RULES_MOBILE : SMART_RULES_DESKTOP;
+      let groups = ['D'];
+      for (let i=0; i<rules.length; i++) {
+        if (zoom >= rules[i].minZoom) groups = rules[i].groups;
+      }
+      return groups;
+    }
+
+    function groupsForMode(zoom) {
+      if (labelMode === 'customers') return ['D'];
+      if (labelMode === 'key') return ['A','D'];
+      if (labelMode === 'all') return ['A','B','C','D'];
+      return smartGroups(zoom); // smart
+    }
+
+    function priority(group) {
+      if (group === 'D') return 4;
+      if (group === 'A') return 3;
+      if (group === 'B') return 2;
+      if (group === 'C') return 1;
+      return 0;
+    }
+
+    // Collision-aware layout
+    function rectOverlap(a, b) {
+      return !(a.x2 < b.x1 || a.x1 > b.x2 || a.y2 < b.y1 || a.y1 > b.y2);
+    }
+
+    function getRect(el, containerRect) {
+      const r = el.getBoundingClientRect();
+      return {
+        x1: r.left - containerRect.left,
+        y1: r.top - containerRect.top,
+        x2: r.right - containerRect.left,
+        y2: r.bottom - containerRect.top
+      };
+    }
+
+    function inside(rect, w, h, margin) {
+      return rect.x1 >= margin && rect.y1 >= margin && rect.x2 <= (w - margin) && rect.y2 <= (h - margin);
+    }
+
+    const CANDIDATES = (() => {
+      const c = [];
+      const base = 14;
+      const step = 14;
+      const jitter = 16;
+
+      // nearest first
+      c.push([ base, 0]);
+      c.push([-base, 0]);
+      c.push([ 0, -base]);
+      c.push([ 0,  base]);
+
+      for (let ring=1; ring<=10; ring++) {
+        const d = base + ring * step;
+        const j = ring * jitter;
+
+        c.push([ d, 0]);
+        c.push([ d,  j]);
+        c.push([ d, -j]);
+        c.push([-d, 0]);
+        c.push([-d,  j]);
+        c.push([-d, -j]);
+
+        c.push([0,  d]);
+        c.push([ j,  d]);
+        c.push([-j,  d]);
+        c.push([0, -d]);
+        c.push([ j, -d]);
+        c.push([-j, -d]);
+      }
+      return c;
+    })();
+
+    function updateLabelVisibilityAndText() {
+      const zoom = map.getZoom();
+      const allowedGroups = groupsForMode(zoom);
+      const mobile = isMobile();
+
+      allMarkers.forEach((o) => {
+        // layer visibility
+        const layerOn = map.hasLayer(layers[o.group]);
+        if (!layerOn) {
+          o.marker.closeTooltip();
+          return;
+        }
+
+        const allowed = allowedGroups.includes(o.group);
+        if (!allowed) {
+          o.marker.closeTooltip();
+          return;
+        }
+
+        // ensure tooltip open
+        o.marker.openTooltip();
+
+        const tooltip = o.marker.getTooltip();
+        if (tooltip) {
+          const txt = mobile ? o.labelShort : o.labelFull;
+          tooltip.setContent(txt);
+        }
+      });
+    }
+
+    function layoutLabels() {
+      const container = map.getContainer();
+      const containerRect = container.getBoundingClientRect();
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+
+      const placed = [];
+
+      // only markers whose tooltip is currently open
+      const visible = allMarkers.filter(o => {
+        if (!map.hasLayer(layers[o.group])) return false;
+        const t = o.marker.getTooltip();
+        const el = t && t.getElement && t.getElement();
+        return !!el;
+      });
+
+      // sort by priority (D first), then name
+      visible.sort((a,b) => {
+        const pa = priority(a.group), pb = priority(b.group);
+        if (pa !== pb) return pb - pa;
+        return (a.labelFull || '').localeCompare(b.labelFull || '');
+      });
+
+      visible.forEach((o) => {
+        const tooltip = o.marker.getTooltip();
+        if (!tooltip) return;
+        o.marker.openTooltip();
+        const el = tooltip.getElement();
+        if (!el) return;
+
+        // reset display for each run
+        el.style.display = '';
+        o.hiddenByLayout = false;
+
+        let chosenRect = null;
+
+        for (let i=0; i<CANDIDATES.length; i++) {
+          const off = CANDIDATES[i];
+          tooltip.options.offset = L.point(off[0], off[1]);
+          tooltip.update();
+
+          const r = getRect(el, containerRect);
+
+          const okInside = inside(r, w, h, 4);
+          if (!okInside && i < CANDIDATES.length - 10) continue;
+
+          let collide = false;
+          for (let k=0; k<placed.length; k++) {
+            if (rectOverlap(r, placed[k])) { collide = true; break; }
+          }
+          if (!collide) {
+            chosenRect = r;
+            break;
+          }
+        }
+
+        if (!chosenRect) {
+          // If "all" mode, keep it even if overlaps.
+          // Otherwise hide non-critical labels to reduce clutter.
+          if (labelMode !== 'all' && o.group !== 'D') {
+            el.style.display = 'none';
+            o.hiddenByLayout = true;
+            return;
+          }
+          chosenRect = getRect(el, containerRect);
+        }
+
+        placed.push(chosenRect);
+      });
+    }
+
+    function scheduleLayout() {
+      window.requestAnimationFrame(() => {
+        updateLabelVisibilityAndText();
+        layoutLabels();
+        window.setTimeout(() => {
+          updateLabelVisibilityAndText();
+          layoutLabels();
+        }, 80);
+      });
+    }
+
+    map.whenReady(() => {
+      // default: keep panel closed to maximize screen
+      scheduleLayout();
+    });
+
+    map.on('zoomend', scheduleLayout);
+    map.on('moveend', scheduleLayout);
+
+    // On resize/orientation change
+    window.addEventListener('resize', scheduleLayout);
+  </script>
+</body>
+</html>
