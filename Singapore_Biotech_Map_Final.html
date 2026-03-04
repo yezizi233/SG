@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Singapore Biotech Ecosystem Map (Final | A/B/C/D labels auto-layout)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    #map { width: 100vw; height: 100vh; }
+    .legend {
+      background: rgba(255,255,255,0.96);
+      padding: 10px 12px;
+      line-height: 1.55;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.18);
+      font-size: 13px;
+    }
+    .legend i {
+      width: 14px; height: 14px; float: left;
+      margin-right: 8px; border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.15);
+    }
+    .note {
+      position: absolute; top: 10px; left: 10px; z-index: 1000;
+      background: rgba(255,255,255,0.96);
+      padding: 10px 12px; border-radius: 8px;
+      max-width: 520px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.18);
+      font-size: 13px; line-height: 1.45;
+    }
+    .note b { display:block; margin-bottom: 4px; }
+
+    /* Permanent label styling */
+    .leaflet-tooltip.marker-label {
+      background: rgba(255,255,255,0.94);
+      border: 1px solid rgba(0,0,0,0.22);
+      border-radius: 6px;
+      color: #111;
+      font-size: 12px;
+      font-weight: 650;
+      padding: 2px 7px;
+      box-shadow: 0 1px 8px rgba(0,0,0,0.12);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    /* Hide tooltip arrow; we do collision-aware box layout */
+    .leaflet-tooltip.marker-label:before {
+      display: none !important;
+    }
+
+    /* Slightly smaller on mobile */
+    @media (max-width: 640px) {
+      .leaflet-tooltip.marker-label {
+        font-size: 11px;
+        padding: 2px 6px;
+      }
+      .note { max-width: calc(100vw - 20px); }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="note">
+    <b>使用说明（新加坡）</b>
+    1) 所有点位名称默认常驻显示；系统会在缩放/移动时自动“避让”重叠标签。<br/>
+    2) 点击圆点查看详情（分类、地址/位置、补充信息、Google Maps 跳转）。<br/>
+    3) A/B/C/D 配色已统一：A红、B蓝、C绿、D橙。<br/>
+    4) 地图点位用于生态/差旅规划；个别机构公开信息仅到 Suburb/Postcode 时，Popup 会明确标注。
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', {
+      worldCopyJump: true
+    }).setView([1.295, 103.82], 12);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://carto.com/">CartoDB</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    const COLOR = {
+      'A': '#E41A1C',
+      'B': '#377EB8',
+      'C': '#4DAF4A',
+      'D': '#FF7F00'
+    };
+
+    const layers = {
+      'A': L.layerGroup().addTo(map),
+      'B': L.layerGroup().addTo(map),
+      'C': L.layerGroup().addTo(map),
+      'D': L.layerGroup().addTo(map)
+    };
+
+    const data = [{"section": "A. 核心研发园区", "category": "研发园区", "name": "Biopolis（启奥城）", "location": "one-north, Buona Vista", "coords": [1.3023, 103.7915], "color": "A", "country": "Singapore", "group": "A", "address": "one-north, Buona Vista"}, {"section": "A. 核心研发园区", "category": "研发园区", "name": "Geneo @ Singapore Science Park", "location": "Science Park Drive, Kent Ridge", "coords": [1.2917, 103.7828], "color": "A", "country": "Singapore", "group": "A", "address": "Science Park Drive, Kent Ridge"}, {"section": "A. 核心研发园区", "category": "研发园区", "name": "Tuas Biomedical Park", "location": "Tuas, 西部", "coords": [1.2952, 103.6262], "color": "A", "country": "Singapore", "group": "A", "address": "Tuas, 西部"}, {"section": "A. 核心研发园区", "category": "研发园区", "name": "Kallang Life Sciences Sub-cluster", "location": "Kallang, 城市边缘", "coords": [1.3113, 103.8649], "color": "A", "country": "Singapore", "group": "A", "address": "Kallang, 城市边缘"}, {"section": "A. 核心研发园区", "category": "研发园区", "name": "LaunchPad @ one-north", "location": "one-north", "coords": [1.2965, 103.7884], "color": "A", "country": "Singapore", "group": "A", "address": "one-north"}, {"section": "B. 生物医药孵化器/加速器", "category": "孵化器", "name": "NSG BioLabs", "location": "Biopolis内，3个站点", "coords": [1.3033, 103.791], "color": "B", "country": "Singapore", "group": "B", "address": "Biopolis内，3个站点"}, {"section": "B. 生物医药孵化器/加速器", "category": "孵化器", "name": "JLABS Singapore (J&J Innovation)", "location": "Biopolis/one-north", "coords": [1.303, 103.7925], "color": "B", "country": "Singapore", "group": "B", "address": "Biopolis/one-north"}, {"section": "B. 生物医药孵化器/加速器", "category": "孵化器", "name": "CO11AB (NHG BioMedTech Incubator)", "location": "Health City Novena", "coords": [1.3216, 103.8458], "color": "B", "country": "Singapore", "group": "B", "address": "Health City Novena"}, {"section": "B. 生物医药孵化器/加速器", "category": "孵化器", "name": "SGInnovate", "location": "Carpenter Street, Clarke Quay", "coords": [1.2873, 103.8471], "color": "B", "country": "Singapore", "group": "B", "address": "Carpenter Street, Clarke Quay"}, {"section": "B. 生物医药孵化器/加速器", "category": "加速器", "name": "Antler Singapore", "location": "128 Prinsep Street, Bugis", "coords": [1.3005, 103.852], "color": "B", "country": "Singapore", "group": "B", "address": "128 Prinsep Street, Bugis"}, {"section": "C. 生命科学核心投资机构", "category": "投资机构", "name": "ClavystBio (Temasek)", "location": "Node 1, Singapore Science Park", "coords": [1.292, 103.783], "color": "C", "country": "Singapore", "group": "C", "address": "Node 1, Singapore Science Park"}, {"section": "C. 生命科学核心投资机构", "category": "投资机构", "name": "SG Growth Capital (EDBI+Seeds合并)", "location": "Singapore", "coords": [1.2941, 103.8528], "color": "C", "country": "Singapore", "group": "C", "address": "Singapore"}, {"section": "C. 生命科学核心投资机构", "category": "投资机构", "name": "Nest.Bio Ventures / NSG Ventures", "location": "Singapore/Boston", "coords": [1.3028, 103.7905], "color": "C", "country": "Singapore", "group": "C", "address": "Singapore/Boston"}, {"section": "C. 生命科学核心投资机构", "category": "投资机构", "name": "Xora Innovation (Temasek)", "location": "Symbiosis Tower, One North", "coords": [1.299, 103.789], "color": "C", "country": "Singapore", "group": "C", "address": "Symbiosis Tower, One North"}, {"section": "D. 现有客户", "category": "现有客户（SO）", "name": "Hummingbird Bioscience", "location": "The Galen, 61 Science Park Road #06-15, Singapore 117525", "coords": [1.2866, 103.7841], "color": "D", "country": "Singapore", "group": "D", "address": "The Galen, 61 Science Park Road #06-15, Singapore 117525"}, {"section": "D. 现有客户", "category": "现有客户（SO）", "name": "VVB Bio Pte Ltd", "location": "11 Collyer Quay #17-00, The Arcade, Singapore 049317", "coords": [1.2836196, 103.8520689], "color": "D", "country": "Singapore", "group": "D", "address": "11 Collyer Quay #17-00, The Arcade, Singapore 049317"}, {"section": "D. 现有客户", "category": "现有客户（SO）", "name": "Biosensors Interventional Technologies", "location": "36 Jalan Tukang, Singapore 619266", "coords": [1.3262, 103.7098], "color": "D", "country": "Singapore", "group": "D", "address": "36 Jalan Tukang, Singapore 619266"}];
+
+    function buildPopup(item) {
+      const addr = item.address || item.location || '';
+      let html = `<b>${item.name}</b><br/>` +
+                 `<b>国家/地区:</b> ${item.country || ''}<br/>` +
+                 `<b>分类:</b> ${item.section || ''}（${item.category || ''}）<br/>` +
+                 `<b>地址/位置:</b> ${addr}<br/>`;
+
+      if (item.extra) {
+        for (const k in item.extra) {
+          if (!Object.prototype.hasOwnProperty.call(item.extra, k)) continue;
+          html += `<b>${k}:</b> ${item.extra[k]}<br/>`;
+        }
+      }
+
+      if (addr) {
+        const gmap = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addr);
+        html += `<a href="${gmap}" target="_blank" rel="noopener">打开 Google Maps</a>`;
+      }
+      return html;
+    }
+
+    // Create markers
+    const allMarkers = [];
+    const allLatLngs = [];
+
+    data.forEach((item) => {
+      const grp = (item.group || (item.section || '').trim().slice(0,1) || '').toUpperCase();
+      item.group = grp;
+
+      const markerColor = COLOR[grp] || '#666';
+      const targetLayer = layers[grp] || map;
+
+      const isD = grp === 'D';
+      const marker = L.circleMarker(item.coords, {
+        radius: isD ? 9 : 8,
+        fillColor: markerColor,
+        color: isD ? '#111' : '#fff',
+        weight: isD ? 2 : 1,
+        opacity: 1,
+        fillOpacity: 0.88
+      }).addTo(targetLayer);
+
+      marker.bindPopup(buildPopup(item));
+
+      marker.bindTooltip(item.name, {
+        permanent: true,
+        direction: 'right',
+        opacity: 0.95,
+        className: 'marker-label',
+        offset: [12, 0]
+      });
+
+      marker.openTooltip();
+
+      allMarkers.push({ marker, group: grp, name: item.name });
+      allLatLngs.push(item.coords);
+    });
+
+    // Fit bounds
+    if (allLatLngs.length > 0) {
+      const bounds = L.latLngBounds(allLatLngs);
+      map.fitBounds(bounds.pad(0.15));
+    }
+
+    // Layer control
+    L.control.layers(null, {
+      'A. 研发园区': layers['A'],
+      'B. 孵化器/加速器': layers['B'],
+      'C. 投资机构': layers['C'],
+      'D. 现有客户': layers['D']
+    }, { collapsed: false }).addTo(map);
+
+    // Legend
+    const legend = L.control({ position: 'bottomright' });
+    legend.onAdd = function() {
+      const div = L.DomUtil.create('div', 'legend');
+      div.innerHTML += '<b>图例</b><br/>';
+      div.innerHTML += '<i style="background: ' + COLOR['A'] + '"></i> A. 研发园区<br/>';
+      div.innerHTML += '<i style="background: ' + COLOR['B'] + '"></i> B. 孵化器/加速器<br/>';
+      div.innerHTML += '<i style="background: ' + COLOR['C'] + '"></i> C. 投资机构<br/>';
+      div.innerHTML += '<i style="background: ' + COLOR['D'] + '"></i> D. 现有客户<br/>';
+      return div;
+    };
+    legend.addTo(map);
+
+    // Collision-aware label layout (re-runs on zoom/pan and layer toggles)
+    function rectOverlap(a, b) {
+      return !(a.x2 < b.x1 || a.x1 > b.x2 || a.y2 < b.y1 || a.y1 > b.y2);
+    }
+
+    function getRect(el, containerRect) {
+      const r = el.getBoundingClientRect();
+      return {
+        x1: r.left - containerRect.left,
+        y1: r.top - containerRect.top,
+        x2: r.right - containerRect.left,
+        y2: r.bottom - containerRect.top
+      };
+    }
+
+    function inside(rect, w, h, margin) {
+      return rect.x1 >= margin && rect.y1 >= margin && rect.x2 <= (w - margin) && rect.y2 <= (h - margin);
+    }
+
+    // Build candidate offsets: spiral rings around marker
+    const CANDIDATES = (() => {
+      const c = [];
+      const base = 12;
+      const step = 12;
+      const jitter = 14;
+
+      // always try close positions first
+      c.push([ base, 0]);
+      c.push([-base, 0]);
+      c.push([ 0, -base]);
+      c.push([ 0,  base]);
+
+      for (let ring=1; ring<=8; ring++) {
+        const d = base + ring * step;
+        const j = ring * jitter;
+
+        // horizontal
+        c.push([ d, 0]);
+        c.push([ d,  j]);
+        c.push([ d, -j]);
+        c.push([-d, 0]);
+        c.push([-d,  j]);
+        c.push([-d, -j]);
+
+        // vertical
+        c.push([0,  d]);
+        c.push([ j,  d]);
+        c.push([-j,  d]);
+        c.push([0, -d]);
+        c.push([ j, -d]);
+        c.push([-j, -d]);
+
+        // diagonals
+        c.push([ d,  j]);
+        c.push([ d, -j]);
+        c.push([-d,  j]);
+        c.push([-d, -j]);
+      }
+      return c;
+    })();
+
+    function priority(group) {
+      // D labels placed first so they "win" space
+      if (group === 'D') return 4;
+      if (group === 'A') return 3;
+      if (group === 'B') return 2;
+      if (group === 'C') return 1;
+      return 0;
+    }
+
+    function layoutLabels() {
+      const container = map.getContainer();
+      const containerRect = container.getBoundingClientRect();
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+
+      const placed = [];
+
+      // visible markers only (respect layer toggles)
+      const visible = allMarkers.filter(o => map.hasLayer(o.marker));
+      visible.sort((a,b) => {
+        const pa = priority(a.group), pb = priority(b.group);
+        if (pa !== pb) return pb - pa;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      visible.forEach((o) => {
+        const tooltip = o.marker.getTooltip();
+        if (!tooltip) return;
+
+        o.marker.openTooltip();
+        const el = tooltip.getElement();
+        if (!el) return;
+
+        let chosenRect = null;
+
+        for (let i=0; i<CANDIDATES.length; i++) {
+          const off = CANDIDATES[i];
+          tooltip.options.offset = L.point(off[0], off[1]);
+          tooltip.update();
+
+          const r = getRect(el, containerRect);
+
+          // avoid going out of viewport; if too crowded, allow edges on last resorts
+          const okInside = inside(r, w, h, 4);
+          if (!okInside && i < CANDIDATES.length - 8) continue;
+
+          let collide = false;
+          for (let k=0; k<placed.length; k++) {
+            if (rectOverlap(r, placed[k])) { collide = true; break; }
+          }
+          if (!collide) {
+            chosenRect = r;
+            break;
+          }
+        }
+
+        if (!chosenRect) {
+          // fallback: keep current
+          chosenRect = getRect(el, containerRect);
+        }
+
+        placed.push(chosenRect);
+      });
+    }
+
+    // Run layout after render
+    function scheduleLayout() {
+      window.requestAnimationFrame(() => {
+        // run twice to stabilize DOM measurements after zoom animations
+        layoutLabels();
+        window.setTimeout(layoutLabels, 60);
+      });
+    }
+
+    map.whenReady(scheduleLayout);
+    map.on('zoomend', scheduleLayout);
+    map.on('moveend', scheduleLayout);
+    map.on('overlayadd', scheduleLayout);
+    map.on('overlayremove', scheduleLayout);
+  </script>
+</body>
+</html>
